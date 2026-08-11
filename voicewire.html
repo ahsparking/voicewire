@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Voicewire — type it, hear it, send it</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14213D;
+    --ink-2:#1C2C52;
+    --paper:#EEF1F3;
+    --panel:#FFFFFF;
+    --signal:#E8A33D;
+    --signal-dim:#c98a2c;
+    --teal:#1B4B4A;
+    --slate:#5C6B73;
+    --slate-light:#8b98a1;
+    --coral:#D9584F;
+    --line:#DADFE3;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:32px 16px 60px;
+  }
+  .app{ width:100%; max-width:560px; }
+  .masthead{
+    background:linear-gradient(160deg,var(--ink) 0%,var(--ink-2) 100%);
+    border-radius:var(--radius) var(--radius) 0 0;
+    padding:22px 24px;
+    color:var(--paper);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    position:relative;
+    overflow:hidden;
+  }
+  .masthead::after{
+    content:"";
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 8px);
+    pointer-events:none;
+  }
+  .brand{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:20px; letter-spacing:0.02em; display:flex; align-items:baseline; gap:2px; }
+  .brand span{color:var(--signal);}
+  .status-pill{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em;
+    display:flex; align-items:center; gap:7px;
+    padding:5px 10px; border:1px solid rgba(255,255,255,0.25); border-radius:20px;
+    text-transform:uppercase; z-index:1;
+  }
+  .dot{ width:7px;height:7px;border-radius:50%; background:var(--slate-light); transition:background .2s ease; }
+  .dot.live{background:var(--signal); animation:pulse 1.4s infinite;}
+  .dot.rec{background:var(--coral); animation:pulse 1s infinite;}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(232,163,61,.55);}
+    70%{box-shadow:0 0 0 8px rgba(232,163,61,0);}
+    100%{box-shadow:0 0 0 0 rgba(232,163,61,0);}
+  }
+  .panel{ background:var(--panel); border:1px solid var(--line); border-top:none; border-radius:0 0 var(--radius) var(--radius); padding:24px; }
+
+  .key-box{
+    background:var(--paper);
+    border:1.5px dashed var(--line);
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:22px;
+  }
+  .key-box.connected{ border-style:solid; border-color:var(--teal); }
+  .key-row{ display:flex; gap:8px; }
+  .key-row input{
+    flex:1;
+    padding:10px 12px;
+    border:1.5px solid var(--line);
+    border-radius:8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    outline:none;
+  }
+  .key-row input:focus{ border-color:var(--teal); }
+  .key-row button{
+    flex:none; padding:10px 16px; font-family:'Space Grotesk',sans-serif; font-weight:600;
+    font-size:13px; border:none; border-radius:8px; background:var(--teal); color:#fff; cursor:pointer;
+  }
+  .key-status{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--slate); margin-top:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .key-status a{ color:var(--teal); }
+  .key-status .ok{ color:var(--teal); font-weight:600; }
+
+  label{ display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--slate); margin-bottom:8px; }
+  textarea{
+    width:100%; min-height:110px; resize:vertical;
+    font-family:'Inter',sans-serif; font-size:16px; line-height:1.5;
+    padding:14px; border:1.5px solid var(--line); border-radius:10px;
+    background:var(--paper); color:var(--ink); outline:none; transition:border-color .15s ease;
+  }
+  textarea:focus{border-color:var(--teal);}
+  .charcount{ text-align:right; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--slate-light); margin-top:4px; }
+
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:20px; }
+  select{
+    width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px;
+    background:var(--panel); font-family:'Inter',sans-serif; font-size:14px; color:var(--ink);
+    outline:none; appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235C6B73' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 12px center; padding-right:32px;
+  }
+  select:focus{border-color:var(--teal);}
+  select:disabled{ opacity:0.5; }
+
+  .slider-row{ display:flex; align-items:center; gap:12px; margin-top:16px; }
+  input[type=range]{flex:1; accent-color:var(--teal);}
+  .slider-val{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--slate); width:34px; text-align:right; }
+
+  .waveform{ height:56px; display:flex; align-items:center; justify-content:center; gap:4px; margin:22px 0 18px; }
+  .waveform .bar{ width:4px; height:8px; background:var(--teal); border-radius:2px; transition:background .2s ease; }
+  .waveform.active .bar{ background:var(--signal); animation:wave 0.9s ease-in-out infinite; }
+  .waveform.rec .bar{background:var(--coral); animation:wave 0.6s ease-in-out infinite;}
+  .waveform .bar:nth-child(1){animation-delay:0s;}
+  .waveform .bar:nth-child(2){animation-delay:0.08s;}
+  .waveform .bar:nth-child(3){animation-delay:0.16s;}
+  .waveform .bar:nth-child(4){animation-delay:0.24s;}
+  .waveform .bar:nth-child(5){animation-delay:0.32s;}
+  .waveform .bar:nth-child(6){animation-delay:0.24s;}
+  .waveform .bar:nth-child(7){animation-delay:0.16s;}
+  .waveform .bar:nth-child(8){animation-delay:0.08s;}
+  .waveform .bar:nth-child(9){animation-delay:0s;}
+  @keyframes wave{ 0%,100%{height:8px;} 50%{height:44px;} }
+
+  .controls{ display:flex; gap:10px; flex-wrap:wrap; }
+  button.action{
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px;
+    border:none; border-radius:10px; padding:13px 18px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition:transform .08s ease, opacity .15s ease, background .15s ease;
+    flex:1; min-width:140px;
+  }
+  button.action:active{transform:scale(0.98);}
+  button.action:disabled{opacity:0.45; cursor:not-allowed;}
+  .btn-preview{background:var(--teal); color:#fff;}
+  .btn-preview:hover:not(:disabled){background:#163c3b;}
+  .btn-generate{background:var(--signal); color:var(--ink);}
+  .btn-generate:hover:not(:disabled){background:var(--signal-dim);}
+
+  .output{ margin-top:20px; padding-top:20px; border-top:1px dashed var(--line); display:none; }
+  .output.show{display:block;}
+  audio{width:100%; margin-bottom:12px;}
+  .share-row{display:flex; gap:10px; flex-wrap:wrap;}
+  .btn-share{background:#25D366; color:#fff;}
+  .btn-share:hover:not(:disabled){background:#1fb959;}
+  .btn-download{background:var(--paper); color:var(--ink); border:1.5px solid var(--line);}
+  .btn-download:hover:not(:disabled){border-color:var(--slate);}
+
+  .note{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--slate); line-height:1.6;
+    margin-top:14px; padding:12px 14px; background:var(--paper); border-radius:8px;
+    border-left:3px solid var(--signal); display:none;
+  }
+  .note.show{display:block;}
+  .note.error{border-left-color:var(--coral);}
+
+  .footer-hint{ text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--slate-light); margin-top:18px; letter-spacing:0.03em; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="masthead">
+    <div class="brand">VOICE<span>WIRE</span></div>
+    <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">standby</span></div>
+  </div>
+
+  <div class="panel">
+
+    <div class="key-box" id="keyBox">
+      <label style="margin-bottom:6px;">Google Cloud TTS API key</label>
+      <div class="key-row">
+        <input type="password" id="apiKeyInput" placeholder="Paste your API key here">
+        <button id="saveKeyBtn">Save</button>
+      </div>
+      <div class="key-status" id="keyStatus">Not connected — <a href="https://console.cloud.google.com" target="_blank" rel="noopener">get a free key at console.cloud.google.com</a></div>
+    </div>
+
+    <label for="textInput">Script</label>
+    <textarea id="textInput" placeholder="Type what you want to say...">Hi! This is a voice message I typed and turned into audio.</textarea>
+    <div class="charcount"><span id="charCount">0</span> characters</div>
+
+    <div class="row">
+      <div>
+        <label for="langSelect">Language</label>
+        <select id="langSelect" disabled><option>Connect API key first</option></select>
+      </div>
+      <div>
+        <label for="voiceSelect">Voice</label>
+        <select id="voiceSelect" disabled><option>Connect API key first</option></select>
+      </div>
+    </div>
+
+    <div class="slider-row">
+      <label style="margin:0; white-space:nowrap;">Speed</label>
+      <input type="range" id="rateSlider" min="0.6" max="1.6" step="0.1" value="1">
+      <span class="slider-val" id="rateVal">1.0x</span>
+    </div>
+
+    <div class="waveform" id="waveform">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+
+    <div class="controls">
+      <button class="action btn-preview" id="previewBtn">▶ Quick preview (free, browser voice)</button>
+      <button class="action btn-generate" id="generateBtn" disabled>⏺ Generate shareable audio</button>
+    </div>
+
+    <div class="note" id="noteBox"></div>
+
+    <div class="output" id="output">
+      <label>Result</label>
+      <audio controls id="audioPlayer"></audio>
+      <div class="share-row">
+        <button class="action btn-share" id="shareBtn">Share to WhatsApp</button>
+        <button class="action btn-download" id="downloadBtn">Download file</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-hint">key is stored only in your browser — audio is generated by calling Google Cloud directly</div>
+</div>
+
+<script>
+const apiKeyInput = document.getElementById('apiKeyInput');
+const saveKeyBtn = document.getElementById('saveKeyBtn');
+const keyStatus = document.getElementById('keyStatus');
+const keyBox = document.getElementById('keyBox');
+const textInput = document.getElementById('textInput');
+const charCount = document.getElementById('charCount');
+const langSelect = document.getElementById('langSelect');
+const voiceSelect = document.getElementById('voiceSelect');
+const rateSlider = document.getElementById('rateSlider');
+const rateVal = document.getElementById('rateVal');
+const previewBtn = document.getElementById('previewBtn');
+const generateBtn = document.getElementById('generateBtn');
+const waveform = document.getElementById('waveform');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const noteBox = document.getElementById('noteBox');
+const output = document.getElementById('output');
+const audioPlayer = document.getElementById('audioPlayer');
+const shareBtn = document.getElementById('shareBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+
+let apiKey = null;
+let allVoices = [];
+let currentBlob = null;
+let currentBlobUrl = null;
+
+function updateCharCount(){ charCount.textContent = textInput.value.length; }
+textInput.addEventListener('input', updateCharCount);
+updateCharCount();
+
+rateSlider.addEventListener('input', () => { rateVal.textContent = parseFloat(rateSlider.value).toFixed(1) + 'x'; });
+
+function setStatus(state, label){
+  statusDot.className = 'dot' + (state ? ' ' + state : '');
+  statusText.textContent = label;
+}
+function showNote(msg, isError){
+  noteBox.textContent = msg;
+  noteBox.className = 'note show' + (isError ? ' error' : '');
+}
+function hideNote(){ noteBox.className = 'note'; }
+
+function langDisplayName(code){
+  try{
+    const dn = new Intl.DisplayNames(['en'], {type:'language'});
+    const base = code.split('-')[0];
+    const name = dn.of(base);
+    return name.charAt(0).toUpperCase() + name.slice(1) + ' (' + code + ')';
+  }catch(e){ return code; }
+}
+
+// ---- API key storage (personal, this browser only) ----
+async function loadStoredKey(){
+  try{
+    const res = await window.storage.get('gcloud_tts_api_key', false);
+    if(res && res.value){
+      apiKey = res.value;
+      apiKeyInput.value = apiKey;
+      await connectWithKey(apiKey, true);
+    }
+  }catch(e){ /* no key stored yet */ }
+}
+
+saveKeyBtn.addEventListener('click', async () => {
+  const val = apiKeyInput.value.trim();
+  if(!val){ showNote('Paste your Google Cloud API key first.', true); return; }
+  await connectWithKey(val, false);
+});
+
+async function connectWithKey(key, silent){
+  keyStatus.innerHTML = 'Connecting…';
+  try{
+    const res = await fetch('https://texttospeech.googleapis.com/v1/voices?key=' + encodeURIComponent(key));
+    if(!res.ok){
+      let detail = 'HTTP ' + res.status;
+      try{ const j = await res.json(); if(j && j.error){ detail = j.error.message || detail; } }catch(e){}
+      throw new Error(detail);
+    }
+    const data = await res.json();
+    allVoices = data.voices || [];
+    apiKey = key;
+
+    const langs = [...new Set(allVoices.flatMap(v => v.languageCodes))].sort();
+    langSelect.innerHTML = '';
+    langs.forEach(lang => {
+      const opt = document.createElement('option');
+      opt.value = lang;
+      opt.textContent = langDisplayName(lang);
+      langSelect.appendChild(opt);
+    });
+    langSelect.disabled = false;
+
+    const preferred = langs.find(l => l.startsWith('en')) || langs[0];
+    langSelect.value = preferred;
+    populateVoicesForLang(preferred);
+
+    generateBtn.disabled = false;
+    keyBox.classList.add('connected');
+    keyStatus.innerHTML = '<span class="ok">Connected</span> — ' + allVoices.length + ' voices across ' + langs.length + ' languages';
+    try{ await window.storage.set('gcloud_tts_api_key', key, false); }catch(e){}
+    if(!silent) hideNote();
+  }catch(e){
+    keyBox.classList.remove('connected');
+    keyStatus.innerHTML = 'Could not connect — <a href="https://console.cloud.google.com" target="_blank" rel="noopener">check your key at console.cloud.google.com</a>';
+    langSelect.disabled = true;
+    voiceSelect.disabled = true;
+    generateBtn.disabled = true;
+    if(!silent){
+      const isNetworkErr = /failed to fetch|networkerror|load failed/i.test(e.message || '');
+      const msg = isNetworkErr
+        ? 'Network request was blocked (reason: "' + e.message + '"). Try downloading this file and opening it directly in your own browser (not inside this chat).'
+        : 'That key did not work: ' + e.message + '. Make sure the Text-to-Speech API is enabled and billing is linked on your Google Cloud project.';
+      showNote(msg, true);
+    }
+  }
+}
+
+function populateVoicesForLang(lang){
+  voiceSelect.innerHTML = '';
+  allVoices.filter(v => v.languageCodes.includes(lang)).forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.dataset.lang = lang;
+    opt.textContent = v.name + ' (' + v.ssmlGender.toLowerCase() + ')';
+    voiceSelect.appendChild(opt);
+  });
+  voiceSelect.disabled = false;
+}
+
+langSelect.addEventListener('change', () => populateVoicesForLang(langSelect.value));
+
+loadStoredKey();
+
+// ---- Free quick preview using the browser's built-in voice ----
+previewBtn.addEventListener('click', () => {
+  hideNote();
+  const text = textInput.value.trim();
+  if(!text){ showNote('Type something first.', true); return; }
+  if(!('speechSynthesis' in window)){ showNote('This browser does not support speech preview.', true); return; }
+  speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = parseFloat(rateSlider.value);
+  waveform.classList.add('active');
+  setStatus('live', 'speaking');
+  previewBtn.disabled = true;
+  utter.onend = utter.onerror = () => {
+    waveform.classList.remove('active');
+    setStatus('', 'standby');
+    previewBtn.disabled = false;
+  };
+  speechSynthesis.speak(utter);
+});
+
+// ---- Real audio file generation via Google Cloud TTS ----
+generateBtn.addEventListener('click', async () => {
+  hideNote();
+  const text = textInput.value.trim();
+  if(!text){ showNote('Type something first.', true); return; }
+  if(!apiKey){ showNote('Connect your API key first.', true); return; }
+  const voiceName = voiceSelect.value;
+  const langCode = langSelect.value;
+  if(!voiceName){ showNote('Pick a voice first.', true); return; }
+
+  generateBtn.disabled = true;
+  previewBtn.disabled = true;
+  waveform.classList.add('rec');
+  setStatus('rec', 'generating');
+  output.classList.remove('show');
+
+  try{
+    const res = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(apiKey), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: { text: text },
+        voice: { languageCode: langCode, name: voiceName },
+        audioConfig: { audioEncoding: 'MP3', speakingRate: parseFloat(rateSlider.value) }
+      })
+    });
+
+    if(!res.ok){
+      let msg = 'Generation failed (status ' + res.status + ').';
+      try{ const errJson = await res.json(); if(errJson && errJson.error){ msg += ' ' + errJson.error.message; } }catch(e){}
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    if(!data.audioContent) throw new Error('No audio returned.');
+
+    const byteChars = atob(data.audioContent);
+    const byteNumbers = new Array(byteChars.length);
+    for(let i = 0; i < byteChars.length; i++){ byteNumbers[i] = byteChars.charCodeAt(i); }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+
+    currentBlob = blob;
+    if(currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+    currentBlobUrl = URL.createObjectURL(blob);
+    audioPlayer.src = currentBlobUrl;
+    output.classList.add('show');
+  }catch(err){
+    showNote(err.message || 'Something went wrong generating the audio.', true);
+  }finally{
+    waveform.classList.remove('rec');
+    setStatus('', 'standby');
+    generateBtn.disabled = false;
+    previewBtn.disabled = false;
+  }
+});
+
+downloadBtn.addEventListener('click', () => {
+  if(!currentBlob) return;
+  const a = document.createElement('a');
+  a.href = currentBlobUrl;
+  a.download = 'voicewire-message.mp3';
+  a.click();
+});
+
+shareBtn.addEventListener('click', async () => {
+  if(!currentBlob) return;
+  const file = new File([currentBlob], 'voicewire-message.mp3', { type: currentBlob.type || 'audio/mpeg' });
+  if(navigator.share && navigator.canShare && navigator.canShare({ files:[file] })){
+    try{ await navigator.share({ files:[file], title:'Voice message' }); }catch(e){ /* cancelled */ }
+  } else {
+    showNote("Direct sharing isn't available in this browser. Download the file, then in WhatsApp open the chat, tap the attachment icon, and choose the downloaded audio file.", false);
+  }
+});
+</script>
+</body>
+</html>
