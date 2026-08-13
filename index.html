@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Voicewire — type it, hear it, send it</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14213D">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Voicewire">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -273,6 +281,25 @@ let allVoices = [];
 let currentBlob = null;
 let currentBlobUrl = null;
 
+// Works as a real deployed site (localStorage) and still degrades safely elsewhere.
+const persist = {
+  async get(key){
+    try{
+      if(window.storage && window.storage.get) {
+        const r = await window.storage.get(key, false);
+        return r ? r.value : null;
+      }
+    }catch(e){}
+    return localStorage.getItem(key);
+  },
+  async set(key, value){
+    try{
+      if(window.storage && window.storage.set){ await window.storage.set(key, value, false); return; }
+    }catch(e){}
+    try{ localStorage.setItem(key, value); }catch(e){}
+  }
+};
+
 function updateCharCount(){ charCount.textContent = textInput.value.length; }
 textInput.addEventListener('input', updateCharCount);
 updateCharCount();
@@ -301,9 +328,9 @@ function langDisplayName(code){
 // ---- API key storage (personal, this browser only) ----
 async function loadStoredKey(){
   try{
-    const res = await window.storage.get('gcloud_tts_api_key', false);
-    if(res && res.value){
-      apiKey = res.value;
+    const stored = await persist.get('gcloud_tts_api_key');
+    if(stored){
+      apiKey = stored;
       apiKeyInput.value = apiKey;
       await connectWithKey(apiKey, true);
     }
@@ -346,7 +373,7 @@ async function connectWithKey(key, silent){
     generateBtn.disabled = false;
     keyBox.classList.add('connected');
     keyStatus.innerHTML = '<span class="ok">Connected</span> — ' + allVoices.length + ' voices across ' + langs.length + ' languages';
-    try{ await window.storage.set('gcloud_tts_api_key', key, false); }catch(e){}
+    try{ await persist.set('gcloud_tts_api_key', key); }catch(e){}
     if(!silent) hideNote();
   }catch(e){
     keyBox.classList.remove('connected');
@@ -543,6 +570,13 @@ shareBtn.addEventListener('click', async () => {
     showNote("Direct sharing isn't available in this browser. Download the file, then in WhatsApp open the chat, tap the attachment icon, and choose the downloaded audio file.", false);
   }
 });
+
+// ---- PWA: register service worker (only works over HTTPS, e.g. GitHub Pages) ----
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => { /* ignore in unsupported contexts */ });
+  });
+}
 </script>
 </body>
 </html>
