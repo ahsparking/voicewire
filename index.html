@@ -190,7 +190,13 @@
       <div class="key-status" id="keyStatus">Not connected — <a href="https://console.cloud.google.com" target="_blank" rel="noopener">get a free key at console.cloud.google.com</a></div>
     </div>
 
-    <label for="textInput">Script</label>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <label for="textInput" style="margin-bottom:0;">Script</label>
+      <button type="button" id="dictateBtn" style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.04em; border:1.5px solid var(--line); background:var(--panel); color:var(--slate); border-radius:20px; padding:5px 12px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+        <span id="dictateDot" style="width:6px;height:6px;border-radius:50%;background:var(--slate-light);"></span>
+        <span id="dictateLabel">🎙 Speak instead</span>
+      </button>
+    </div>
     <textarea id="textInput" placeholder="Type what you want to say...">Hi! This is a voice message I typed and turned into audio.</textarea>
     <div class="charcount"><span id="charCount">0</span> characters</div>
 
@@ -258,6 +264,9 @@ const output = document.getElementById('output');
 const audioPlayer = document.getElementById('audioPlayer');
 const shareBtn = document.getElementById('shareBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const dictateBtn = document.getElementById('dictateBtn');
+const dictateDot = document.getElementById('dictateDot');
+const dictateLabel = document.getElementById('dictateLabel');
 
 let apiKey = null;
 let allVoices = [];
@@ -370,6 +379,75 @@ function populateVoicesForLang(lang){
 langSelect.addEventListener('change', () => populateVoicesForLang(langSelect.value));
 
 loadStoredKey();
+
+// ---- Speak-to-type: dictate into the script box ----
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizer = null;
+let isDictating = false;
+let dictationBaseText = '';
+
+if(SpeechRecognitionAPI){
+  recognizer = new SpeechRecognitionAPI();
+  recognizer.continuous = true;
+  recognizer.interimResults = true;
+
+  recognizer.onresult = (event) => {
+    let finalChunk = '';
+    let interimChunk = '';
+    for(let i = event.resultIndex; i < event.results.length; i++){
+      const transcript = event.results[i][0].transcript;
+      if(event.results[i].isFinal) finalChunk += transcript;
+      else interimChunk += transcript;
+    }
+    if(finalChunk) dictationBaseText = (dictationBaseText + ' ' + finalChunk).trim();
+    textInput.value = (dictationBaseText + ' ' + interimChunk).trim();
+    updateCharCount();
+  };
+
+  recognizer.onerror = (event) => {
+    if(event.error === 'not-allowed' || event.error === 'service-not-allowed'){
+      showNote('Microphone permission was denied, so speak-to-type cannot work.', true);
+    } else if(event.error !== 'no-speech'){
+      showNote('Speech recognition error: ' + event.error, true);
+    }
+    stopDictation();
+  };
+
+  recognizer.onend = () => {
+    if(isDictating){
+      // browsers auto-stop after a pause; restart seamlessly if user hasn't clicked stop
+      try{ recognizer.start(); }catch(e){ stopDictation(); }
+    }
+  };
+} else {
+  dictateBtn.disabled = true;
+  dictateBtn.title = 'Speech-to-text is not supported in this browser';
+  dictateBtn.style.opacity = '0.4';
+}
+
+function startDictation(){
+  hideNote();
+  dictationBaseText = textInput.value.trim();
+  isDictating = true;
+  dictateDot.style.background = 'var(--coral)';
+  dictateLabel.textContent = '● Listening… tap to stop';
+  dictateBtn.style.borderColor = 'var(--coral)';
+  try{ recognizer.start(); }catch(e){ /* already started */ }
+}
+
+function stopDictation(){
+  isDictating = false;
+  dictateDot.style.background = 'var(--slate-light)';
+  dictateLabel.textContent = '🎙 Speak instead';
+  dictateBtn.style.borderColor = 'var(--line)';
+  try{ recognizer.stop(); }catch(e){}
+}
+
+dictateBtn.addEventListener('click', () => {
+  if(!recognizer) return;
+  if(isDictating) stopDictation();
+  else startDictation();
+});
 
 // ---- Free quick preview using the browser's built-in voice ----
 previewBtn.addEventListener('click', () => {
