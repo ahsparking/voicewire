@@ -75,6 +75,27 @@
     70%{box-shadow:0 0 0 8px rgba(232,163,61,0);}
     100%{box-shadow:0 0 0 0 rgba(232,163,61,0);}
   }
+
+  #dictateBtn.listening{
+    background:rgba(217,88,79,0.08);
+    animation:mic-ring 1.3s ease-out infinite;
+  }
+  #dictateBtn.listening #dictateDot{
+    animation:mic-dot 1s ease-in-out infinite;
+  }
+  @keyframes mic-ring{
+    0%{box-shadow:0 0 0 0 rgba(217,88,79,.45);}
+    70%{box-shadow:0 0 0 10px rgba(217,88,79,0);}
+    100%{box-shadow:0 0 0 0 rgba(217,88,79,0);}
+  }
+  @keyframes mic-dot{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.6);}
+  }
+  .waveform.dictating .bar{
+    background:var(--coral);
+    animation:wave 0.7s ease-in-out infinite;
+  }
   .panel{ background:var(--panel); border:1px solid var(--line); border-top:none; border-radius:0 0 var(--radius) var(--radius); padding:24px; }
 
   .key-box{
@@ -459,6 +480,9 @@ function startDictation(){
   dictateDot.style.background = 'var(--coral)';
   dictateLabel.textContent = '● Listening… tap to stop';
   dictateBtn.style.borderColor = 'var(--coral)';
+  dictateBtn.classList.add('listening');
+  waveform.classList.add('dictating');
+  setStatus('rec', 'listening');
   try{ recognizer.start(); }catch(e){ /* already started */ }
 }
 
@@ -467,6 +491,9 @@ function stopDictation(){
   dictateDot.style.background = 'var(--slate-light)';
   dictateLabel.textContent = '🎙 Speak instead';
   dictateBtn.style.borderColor = 'var(--line)';
+  dictateBtn.classList.remove('listening');
+  waveform.classList.remove('dictating');
+  setStatus('', 'standby');
   try{ recognizer.stop(); }catch(e){}
 }
 
