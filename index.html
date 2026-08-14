@@ -176,8 +176,6 @@
   }
   button.action:active{transform:scale(0.98);}
   button.action:disabled{opacity:0.45; cursor:not-allowed;}
-  .btn-preview{background:var(--teal); color:#fff;}
-  .btn-preview:hover:not(:disabled){background:#163c3b;}
   .btn-generate{background:var(--signal); color:var(--ink);}
   .btn-generate:hover:not(:disabled){background:var(--signal-dim);}
 
@@ -210,10 +208,6 @@
   </div>
 
   <div class="panel">
-
-    <div class="key-box" id="keyBox">
-      <div class="key-status" id="keyStatus">Connecting to voice server…</div>
-    </div>
 
     <div style="display:flex; align-items:center; justify-content:space-between;">
       <label for="textInput" style="margin-bottom:0;">Script</label>
@@ -248,7 +242,6 @@
     </div>
 
     <div class="controls">
-      <button class="action btn-preview" id="previewBtn">▶ Quick preview (free, browser voice)</button>
       <button class="action btn-generate" id="generateBtn" disabled>⏺ Generate shareable audio</button>
     </div>
 
@@ -273,15 +266,12 @@
 // ---- CHANGE THIS to your deployed backend URL after following the server README ----
 const API_BASE = 'https://voicewire-backend-327603629821.us-central1.run.app';
 
-const keyStatus = document.getElementById('keyStatus');
-const keyBox = document.getElementById('keyBox');
 const textInput = document.getElementById('textInput');
 const charCount = document.getElementById('charCount');
 const langSelect = document.getElementById('langSelect');
 const voiceSelect = document.getElementById('voiceSelect');
 const rateSlider = document.getElementById('rateSlider');
 const rateVal = document.getElementById('rateVal');
-const previewBtn = document.getElementById('previewBtn');
 const generateBtn = document.getElementById('generateBtn');
 const waveform = document.getElementById('waveform');
 const statusDot = document.getElementById('statusDot');
@@ -350,7 +340,6 @@ function langDisplayName(code){
 
 // ---- Connect to our own backend (which holds the Google key) instead of Google directly ----
 async function connectToBackend(){
-  keyStatus.innerHTML = 'Connecting to voice server…';
   try{
     const res = await fetch(API_BASE + '/api/voices');
     if(!res.ok){
@@ -377,22 +366,14 @@ async function connectToBackend(){
     populateVoicesForLang(preferred);
 
     generateBtn.disabled = false;
-    keyBox.classList.add('connected');
-    keyStatus.innerHTML = '<span class="ok">Connected</span> — ' + allVoices.length + ' voices across ' + langs.length + ' languages';
     setStatus('', 'standby');
   }catch(e){
     backendReady = false;
-    keyBox.classList.remove('connected');
-    keyStatus.innerHTML = 'Could not reach the voice server.';
     langSelect.disabled = true;
     voiceSelect.disabled = true;
     generateBtn.disabled = true;
     setStatus('', 'standby');
-    const isNetworkErr = /failed to fetch|networkerror|load failed/i.test(e.message || '');
-    const msg = isNetworkErr
-      ? 'Could not reach the backend server (reason: "' + e.message + '"). Make sure API_BASE in the code points to your deployed server, and that it is running.'
-      : 'Backend error: ' + e.message;
-    showNote(msg, true);
+    console.error('Voicewire: could not reach backend —', e.message);
   }
 }
 
@@ -487,26 +468,6 @@ dictateBtn.addEventListener('click', () => {
   else startDictation();
 });
 
-// ---- Free quick preview using the browser's built-in voice ----
-previewBtn.addEventListener('click', () => {
-  hideNote();
-  const text = textInput.value.trim();
-  if(!text){ showNote('Type something first.', true); return; }
-  if(!('speechSynthesis' in window)){ showNote('This browser does not support speech preview.', true); return; }
-  speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.rate = parseFloat(rateSlider.value);
-  waveform.classList.add('active');
-  setStatus('live', 'speaking');
-  previewBtn.disabled = true;
-  utter.onend = utter.onerror = () => {
-    waveform.classList.remove('active');
-    setStatus('', 'standby');
-    previewBtn.disabled = false;
-  };
-  speechSynthesis.speak(utter);
-});
-
 // ---- Real audio file generation via Google Cloud TTS ----
 generateBtn.addEventListener('click', async () => {
   hideNote();
@@ -518,7 +479,6 @@ generateBtn.addEventListener('click', async () => {
   if(!voiceName){ showNote('Pick a voice first.', true); return; }
 
   generateBtn.disabled = true;
-  previewBtn.disabled = true;
   waveform.classList.add('rec');
   setStatus('rec', 'generating');
   output.classList.remove('show');
@@ -561,7 +521,6 @@ generateBtn.addEventListener('click', async () => {
     waveform.classList.remove('rec');
     setStatus('', 'standby');
     generateBtn.disabled = false;
-    previewBtn.disabled = false;
   }
 });
 
