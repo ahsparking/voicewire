@@ -77,21 +77,36 @@
     100%{box-shadow:0 0 0 0 rgba(232,163,61,0);}
   }
 
+  .textarea-wrap{ position:relative; }
+
+  #dictateBtn{
+    position:absolute;
+    right:12px;
+    bottom:12px;
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    border:none;
+    background:var(--teal);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    box-shadow:0 2px 6px rgba(20,33,61,0.25);
+    transition:background .15s ease, transform .1s ease;
+  }
+  #dictateBtn:active{ transform:scale(0.94); }
+  #dictateBtn:disabled{ opacity:0.35; cursor:not-allowed; }
+
   #dictateBtn.listening{
-    background:rgba(217,88,79,0.08);
+    background:var(--coral);
     animation:mic-ring 1.3s ease-out infinite;
   }
-  #dictateBtn.listening #dictateDot{
-    animation:mic-dot 1s ease-in-out infinite;
-  }
   @keyframes mic-ring{
-    0%{box-shadow:0 0 0 0 rgba(217,88,79,.45);}
-    70%{box-shadow:0 0 0 10px rgba(217,88,79,0);}
+    0%{box-shadow:0 0 0 0 rgba(217,88,79,.55);}
+    70%{box-shadow:0 0 0 14px rgba(217,88,79,0);}
     100%{box-shadow:0 0 0 0 rgba(217,88,79,0);}
-  }
-  @keyframes mic-dot{
-    0%,100%{transform:scale(1);}
-    50%{transform:scale(1.6);}
   }
   .waveform.dictating .bar{
     background:var(--coral);
@@ -130,7 +145,7 @@
   textarea{
     width:100%; min-height:110px; resize:vertical;
     font-family:'Inter',sans-serif; font-size:16px; line-height:1.5;
-    padding:14px; border:1.5px solid var(--line); border-radius:10px;
+    padding:14px; padding-right:58px; border:1.5px solid var(--line); border-radius:10px;
     background:var(--paper); color:var(--ink); outline:none; transition:border-color .15s ease;
   }
   textarea:focus{border-color:var(--teal);}
@@ -209,14 +224,20 @@
 
   <div class="panel">
 
-    <div style="display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
       <label for="textInput" style="margin-bottom:0;">Script</label>
-      <button type="button" id="dictateBtn" style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.04em; border:1.5px solid var(--line); background:var(--panel); color:var(--slate); border-radius:20px; padding:5px 12px; cursor:pointer; display:flex; align-items:center; gap:6px;">
-        <span id="dictateDot" style="width:6px;height:6px;border-radius:50%;background:var(--slate-light);"></span>
-        <span id="dictateLabel">🎙 Speak instead</span>
+    </div>
+    <div class="textarea-wrap">
+      <textarea id="textInput" placeholder="Type what you want to say...">Hi! This is a voice message I typed and turned into audio.</textarea>
+      <button type="button" id="dictateBtn" aria-label="Speak instead">
+        <svg id="micIcon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
       </button>
     </div>
-    <textarea id="textInput" placeholder="Type what you want to say...">Hi! This is a voice message I typed and turned into audio.</textarea>
     <div class="charcount"><span id="charCount">0</span> characters</div>
 
     <div class="row">
@@ -282,8 +303,6 @@ const audioPlayer = document.getElementById('audioPlayer');
 const shareBtn = document.getElementById('shareBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const dictateBtn = document.getElementById('dictateBtn');
-const dictateDot = document.getElementById('dictateDot');
-const dictateLabel = document.getElementById('dictateLabel');
 
 let backendReady = false;
 let allVoices = [];
@@ -442,10 +461,9 @@ function startDictation(){
   hideNote();
   dictationBaseText = textInput.value.trim();
   isDictating = true;
-  dictateDot.style.background = 'var(--coral)';
-  dictateLabel.textContent = '● Listening… tap to stop';
-  dictateBtn.style.borderColor = 'var(--coral)';
+  if(langSelect && langSelect.value){ recognizer.lang = langSelect.value; }
   dictateBtn.classList.add('listening');
+  dictateBtn.setAttribute('aria-label', 'Stop listening');
   waveform.classList.add('dictating');
   setStatus('rec', 'listening');
   try{ recognizer.start(); }catch(e){ /* already started */ }
@@ -453,10 +471,8 @@ function startDictation(){
 
 function stopDictation(){
   isDictating = false;
-  dictateDot.style.background = 'var(--slate-light)';
-  dictateLabel.textContent = '🎙 Speak instead';
-  dictateBtn.style.borderColor = 'var(--line)';
   dictateBtn.classList.remove('listening');
+  dictateBtn.setAttribute('aria-label', 'Speak instead');
   waveform.classList.remove('dictating');
   setStatus('', 'standby');
   try{ recognizer.stop(); }catch(e){}
