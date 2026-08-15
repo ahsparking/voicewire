@@ -497,6 +497,8 @@ let recStartTime = 0;
 function startLiveWaveform(){
   vizBars = [];
   let phase = 0;
+  let lastPush = 0;
+  const BAR_INTERVAL_MS = 90; // new bar roughly every 90ms — a calm, WhatsApp-like pace
 
   // Match the canvas's internal pixel grid to how large it's actually rendered
   // on screen — without this, a fixed-width canvas gets stretched by CSS and
@@ -506,27 +508,30 @@ function startLiveWaveform(){
   liveWaveCanvas.width = Math.max(1, Math.round(rect.width * dpr));
   liveWaveCanvas.height = Math.max(1, Math.round(rect.height * dpr));
 
-  function draw(){
-    phase += 0.35;
-    // layered sine waves for a natural, non-repeating look
-    const level = 0.25 + 0.35 * Math.abs(Math.sin(phase)) + 0.25 * Math.abs(Math.sin(phase * 2.3 + 1));
-    vizBars.push(Math.min(1, level));
-    if(vizBars.length > VIZ_MAX_BARS) vizBars.shift();
+  function draw(timestamp){
+    if(timestamp - lastPush >= BAR_INTERVAL_MS){
+      lastPush = timestamp;
+      phase += 0.28;
+      // layered sine waves for a natural, non-repeating look
+      const level = 0.25 + 0.35 * Math.abs(Math.sin(phase)) + 0.25 * Math.abs(Math.sin(phase * 2.3 + 1));
+      vizBars.push(Math.min(1, level));
+      if(vizBars.length > VIZ_MAX_BARS) vizBars.shift();
 
-    const w = liveWaveCanvas.width, h = liveWaveCanvas.height;
-    liveWaveCtx.clearRect(0, 0, w, h);
-    const barW = w / VIZ_MAX_BARS;
-    vizBars.forEach((lvl, i) => {
-      const barH = Math.max(3, lvl * h);
-      const x = i * barW;
-      const y = (h - barH) / 2;
-      liveWaveCtx.fillStyle = i > vizBars.length - 6 ? '#D9584F' : '#8b98a1';
-      liveWaveCtx.fillRect(x, y, Math.max(1.5, barW - 2), barH);
-    });
+      const w = liveWaveCanvas.width, h = liveWaveCanvas.height;
+      liveWaveCtx.clearRect(0, 0, w, h);
+      const barW = w / VIZ_MAX_BARS;
+      vizBars.forEach((lvl, i) => {
+        const barH = Math.max(3, lvl * h);
+        const x = i * barW;
+        const y = (h - barH) / 2;
+        liveWaveCtx.fillStyle = i > vizBars.length - 6 ? '#D9584F' : '#8b98a1';
+        liveWaveCtx.fillRect(x, y, Math.max(1.5, barW - 2), barH);
+      });
+    }
 
     vizRafId = requestAnimationFrame(draw);
   }
-  draw();
+  vizRafId = requestAnimationFrame(draw);
 }
 
 function stopLiveWaveform(){
@@ -546,7 +551,10 @@ function startDictation(){
   hideNote();
   dictationBaseText = textInput.value.trim();
   isDictating = true;
-  if(langSelect && langSelect.value){ recognizer.lang = langSelect.value; }
+  // Deliberately NOT setting recognizer.lang from the voice dropdown — that list is
+  // built for Google Cloud TTS (2000+ locales) and speech RECOGNITION supports a much
+  // smaller, different set. Forcing an unsupported locale can make it silently return
+  // zero results. Letting the browser use its own default is more reliable in practice.
   dictateBtn.classList.add('listening');
   dictateBtn.setAttribute('aria-label', 'Stop listening');
   waveform.style.display = 'none';
