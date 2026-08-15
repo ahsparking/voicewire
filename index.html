@@ -482,42 +482,35 @@ const liveTimer = document.getElementById('liveTimer');
 const liveWaveCanvas = document.getElementById('liveWave');
 const liveWaveCtx = liveWaveCanvas.getContext('2d');
 
-let vizStream = null;
-let vizAudioCtx = null;
-let vizAnalyser = null;
 let vizRafId = null;
 let vizBars = [];
 const VIZ_MAX_BARS = 60;
 let recTimerInterval = null;
 let recStartTime = 0;
 
-async function startLiveWaveform(){
+// Note: we deliberately do NOT open a second getUserMedia mic stream here.
+// On some Android/Chrome combinations, a second concurrent mic connection
+// while SpeechRecognition already holds the mic silently breaks recognition
+// (listening indicator stays on, but no transcript ever comes back). So this
+// is a lively but simulated visualizer, not real audio amplitude — it still
+// gives clear "something is happening" feedback without risking that bug.
+function startLiveWaveform(){
   vizBars = [];
-  try{
-    vizStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-  }catch(e){
-    return; // mic already granted for recognizer in most cases; if this fails, canvas just stays empty — not fatal
-  }
-  vizAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const source = vizAudioCtx.createMediaStreamSource(vizStream);
-  vizAnalyser = vizAudioCtx.createAnalyser();
-  vizAnalyser.fftSize = 256;
-  source.connect(vizAnalyser);
+  let phase = 0;
 
-  const dataArray = new Uint8Array(vizAnalyser.frequencyBinCount);
+  // Match the canvas's internal pixel grid to how large it's actually rendered
+  // on screen — without this, a fixed-width canvas gets stretched by CSS and
+  // bars appear as thin flat dashes instead of proper equalizer bars.
+  const rect = liveWaveCanvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  liveWaveCanvas.width = Math.max(1, Math.round(rect.width * dpr));
+  liveWaveCanvas.height = Math.max(1, Math.round(rect.height * dpr));
 
   function draw(){
-    vizAnalyser.getByteTimeDomainData(dataArray);
-    // compute RMS amplitude (0..1) from this frame
-    let sum = 0;
-    for(let i = 0; i < dataArray.length; i++){
-      const v = (dataArray[i] - 128) / 128;
-      sum += v * v;
-    }
-    const rms = Math.sqrt(sum / dataArray.length);
-    const level = Math.min(1, rms * 4); // amplify quiet speech so bars are visible
-
-    vizBars.push(level);
+    phase += 0.35;
+    // layered sine waves for a natural, non-repeating look
+    const level = 0.25 + 0.35 * Math.abs(Math.sin(phase)) + 0.25 * Math.abs(Math.sin(phase * 2.3 + 1));
+    vizBars.push(Math.min(1, level));
     if(vizBars.length > VIZ_MAX_BARS) vizBars.shift();
 
     const w = liveWaveCanvas.width, h = liveWaveCanvas.height;
@@ -539,10 +532,6 @@ async function startLiveWaveform(){
 function stopLiveWaveform(){
   if(vizRafId) cancelAnimationFrame(vizRafId);
   vizRafId = null;
-  if(vizStream) vizStream.getTracks().forEach(t => t.stop());
-  vizStream = null;
-  if(vizAudioCtx) vizAudioCtx.close().catch(() => {});
-  vizAudioCtx = null;
   liveWaveCtx.clearRect(0, 0, liveWaveCanvas.width, liveWaveCanvas.height);
 }
 
