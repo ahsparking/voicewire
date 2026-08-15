@@ -365,6 +365,80 @@ langSelect.addEventListener('change', () => populateVoicesForLang(langSelect.val
 
 connectToBackend();
 
+// ---- Real audio file generation via Google Cloud TTS (through our backend) ----
+generateBtn.addEventListener('click', async () => {
+  hideNote();
+  const text = textInput.value.trim();
+  if(!text){ showNote('Type something first.', true); return; }
+  if(!backendReady){ showNote('Not connected to the voice server yet.', true); return; }
+  const voiceName = voiceSelect.value;
+  const langCode = langSelect.value;
+  if(!voiceName){ showNote('Pick a voice first.', true); return; }
+
+  generateBtn.disabled = true;
+  waveform.classList.add('rec');
+  setStatus('rec', 'generating');
+  output.classList.remove('show');
+
+  try{
+    const res = await fetch(API_BASE + '/api/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: text,
+        languageCode: langCode,
+        voiceName: voiceName,
+        speakingRate: parseFloat(rateSlider.value)
+      })
+    });
+
+    if(!res.ok){
+      let msg = 'Generation failed (status ' + res.status + ').';
+      try{ const errJson = await res.json(); if(errJson && errJson.error){ msg = errJson.error; } }catch(e){}
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    if(!data.audioContent) throw new Error('No audio returned.');
+
+    const byteChars = atob(data.audioContent);
+    const byteNumbers = new Array(byteChars.length);
+    for(let i = 0; i < byteChars.length; i++){ byteNumbers[i] = byteChars.charCodeAt(i); }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+
+    currentBlob = blob;
+    if(currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+    currentBlobUrl = URL.createObjectURL(blob);
+    audioPlayer.src = currentBlobUrl;
+    output.classList.add('show');
+  }catch(err){
+    showNote(err.message || 'Something went wrong generating the audio.', true);
+  }finally{
+    waveform.classList.remove('rec');
+    setStatus('', 'standby');
+    generateBtn.disabled = false;
+  }
+});
+
+downloadBtn.addEventListener('click', () => {
+  if(!currentBlob) return;
+  const a = document.createElement('a');
+  a.href = currentBlobUrl;
+  a.download = 'voicewire-message.mp3';
+  a.click();
+});
+
+shareBtn.addEventListener('click', async () => {
+  if(!currentBlob) return;
+  const file = new File([currentBlob], 'voicewire-message.mp3', { type: currentBlob.type || 'audio/mpeg' });
+  if(navigator.share && navigator.canShare && navigator.canShare({ files:[file] })){
+    try{ await navigator.share({ files:[file], title:'Voice message' }); }catch(e){ /* cancelled */ }
+  } else {
+    showNote("Direct sharing isn't available in this browser. Download the file instead, then attach it from whichever app you want to send it through.", false);
+  }
+});
+
 // ---- PWA: register service worker (only works over HTTPS, e.g. GitHub Pages) ----
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
